@@ -42,7 +42,10 @@
       "Bash(./fusion-search-prod)",
       "Bash(rm *)",
       "Bash(make *)",
-      "Bash(file *)"
+      "Bash(file *)",
+      "WebFetch(fusion-search.icosmos.space)",
+      "Bash(mv *)",
+      "Bash(strings *)"
     ]
   },
   "$version": 3

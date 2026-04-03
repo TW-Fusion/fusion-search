@@ -2,6 +2,7 @@ package routers
 
 import (
 	"github.com/TW-Fusion/fusion-search/app/config"
+	"github.com/TW-Fusion/fusion-search/app/internal"
 	"github.com/TW-Fusion/fusion-search/app/middleware"
 	"github.com/TW-Fusion/fusion-search/app/services"
 	"github.com/gin-gonic/gin"
@@ -25,4 +26,7 @@ func Setup(
 	// Utility routes
 	HealthRouter(r)
 	ToolSchemaRouter(r)
+
+	// Admin routes
+	internal.SetupAdminRoutes(r, "config.yaml")
 }
