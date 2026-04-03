@@ -1,6 +1,6 @@
-# OrioSearch - Go Implementation
+# FusionSearch - Go Implementation
 
-This is a Go implementation of the OrioSearch API, equivalent to the Python version but using the Go ecosystem with Gin framework.
+This is a Go implementation of the FusionSearch API, equivalent to the Python version but using the Go ecosystem with Gin framework.
 
 ## Architecture
 
@@ -59,18 +59,18 @@ goapp/
 ### Build
 ```bash
 cd goapp
-go build -o orio-search .
+go build -o fusion-search .
 ```
 
 ### Run
 ```bash
-./orio-search
+./fusion-search
 ```
 
 The server will start on `0.0.0.0:8000` by default.
 
 ### Configuration
-Same `config.yaml` file as the Python version, or set `ORIO_SEARCH_CONFIG` environment variable.
+Same `config.yaml` file as the Python version, or set `FUSION_SEARCH_CONFIG` environment variable.
 
 ## API Endpoints
 
