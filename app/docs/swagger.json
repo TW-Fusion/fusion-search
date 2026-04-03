@@ -1,0 +1,462 @@
+{
+    "schemes": [
+        "http",
+        "https"
+    ],
+    "swagger": "2.0",
+    "info": {
+        "description": "API for web search, content extraction, and AI-powered answers",
+        "title": "FusionSearch API",
+        "contact": {},
+        "version": "1.0"
+    },
+    "host": "localhost:9000",
+    "basePath": "/",
+    "paths": {
+        "/extract": {
+            "post": {
+                "description": "Extract and clean content from web pages, returning in markdown or text format. Supports batch extraction with caching for better performance.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Extraction"
+                ],
+                "summary": "Extract clean content from one or more URLs",
+                "parameters": [
+                    {
+                        "description": "Extract request parameters",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/models.ExtractRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Successful extraction response",
+                        "schema": {
+                            "$ref": "#/definitions/models.ExtractResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Invalid request parameters",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/health": {
+            "get": {
+                "description": "Returns the health status of the service",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Health"
+                ],
+                "summary": "Health check endpoint",
+                "responses": {
+                    "200": {
+                        "description": "Service is healthy",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/search": {
+            "post": {
+                "description": "Perform a web search with optional content extraction, AI answer generation, and image search. Supports basic (snippets only) and advanced (full content extraction) search depths.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Search"
+                ],
+                "summary": "Search the web and return relevant results",
+                "parameters": [
+                    {
+                        "description": "Search request parameters",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/models.SearchRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Successful search response",
+                        "schema": {
+                            "$ref": "#/definitions/models.SearchResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Invalid request parameters",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "503": {
+                        "description": "Search service unavailable",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/search/stream": {
+            "post": {
+                "description": "Perform a web search and stream results back using Server-Sent Events. Supports real-time streaming of search results, extractions, and AI-generated answers.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Search"
+                ],
+                "summary": "Search the web with Server-Sent Events (SSE) streaming",
+                "parameters": [
+                    {
+                        "description": "Search request parameters",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/models.SearchRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "SSE stream with search results and optional AI answer",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    "400": {
+                        "description": "Invalid request parameters",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/tool-schema": {
+            "get": {
+                "description": "Returns available tools schema for AI agent integration",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Tools"
+                ],
+                "summary": "Tool schema for AI agents",
+                "responses": {
+                    "200": {
+                        "description": "Tool schema definition",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    }
+                }
+            }
+        }
+    },
+    "definitions": {
+        "models.ContentFormat": {
+            "type": "string",
+            "enum": [
+                "markdown",
+                "text"
+            ],
+            "x-enum-varnames": [
+                "ContentFormatMarkdown",
+                "ContentFormatText"
+            ]
+        },
+        "models.ExtractRequest": {
+            "type": "object",
+            "required": [
+                "urls"
+            ],
+            "properties": {
+                "extract_depth": {
+                    "description": "Extraction depth",
+                    "type": "string"
+                },
+                "format": {
+                    "description": "Output format: markdown or text\ndefault: markdown",
+                    "allOf": [
+                        {
+                            "$ref": "#/definitions/models.ContentFormat"
+                        }
+                    ]
+                },
+                "urls": {
+                    "description": "URLs to extract content from\nrequired: true\nminItems: 1\nmaxItems: 20\nexample: [\"https://golang.org/doc/\", \"https://gin-gonic.com/docs/\"]",
+                    "type": "array",
+                    "maxItems": 20,
+                    "minItems": 1,
+                    "items": {
+                        "type": "string"
+                    }
+                }
+            }
+        },
+        "models.ExtractResponse": {
+            "type": "object",
+            "properties": {
+                "failed_results": {
+                    "description": "URLs that failed to extract",
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/models.FailedResult"
+                    }
+                },
+                "response_time": {
+                    "description": "Total response time in seconds",
+                    "type": "number"
+                },
+                "results": {
+                    "description": "Successfully extracted results",
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/models.ExtractResult"
+                    }
+                }
+            }
+        },
+        "models.ExtractResult": {
+            "type": "object",
+            "properties": {
+                "raw_content": {
+                    "description": "Extracted page content",
+                    "type": "string"
+                },
+                "url": {
+                    "description": "The URL that was extracted",
+                    "type": "string"
+                }
+            }
+        },
+        "models.FailedResult": {
+            "type": "object",
+            "properties": {
+                "error": {
+                    "description": "Error message describing the failure",
+                    "type": "string"
+                },
+                "url": {
+                    "description": "The URL that failed",
+                    "type": "string"
+                }
+            }
+        },
+        "models.ImageResult": {
+            "type": "object",
+            "properties": {
+                "description": {
+                    "description": "Image description or alt text",
+                    "type": "string"
+                },
+                "url": {
+                    "description": "Direct image URL",
+                    "type": "string"
+                }
+            }
+        },
+        "models.SearchDepth": {
+            "type": "string",
+            "enum": [
+                "basic",
+                "advanced"
+            ],
+            "x-enum-varnames": [
+                "SearchDepthBasic",
+                "SearchDepthAdvanced"
+            ]
+        },
+        "models.SearchRequest": {
+            "type": "object",
+            "required": [
+                "query"
+            ],
+            "properties": {
+                "exclude_domains": {
+                    "description": "Exclude results from these domains",
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "include_answer": {
+                    "description": "Generate an AI answer from search results (requires LLM config)\ndefault: false",
+                    "type": "boolean"
+                },
+                "include_domains": {
+                    "description": "Only include results from these domains",
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "include_images": {
+                    "description": "Include image search results\ndefault: false",
+                    "type": "boolean"
+                },
+                "include_raw_content": {
+                    "description": "Include full extracted page content in results\ndefault: false",
+                    "type": "boolean"
+                },
+                "max_results": {
+                    "description": "Number of results to return (1-20)\nminimum: 1\nmaximum: 20\ndefault: 5",
+                    "type": "integer"
+                },
+                "query": {
+                    "description": "The search query\nrequired: true\nexample: \"What is Go programming language?\"",
+                    "type": "string"
+                },
+                "search_depth": {
+                    "description": "Search depth level: basic for fast snippets, advanced for full content extraction\ndefault: basic",
+                    "allOf": [
+                        {
+                            "$ref": "#/definitions/models.SearchDepth"
+                        }
+                    ]
+                },
+                "time_range": {
+                    "description": "Filter results by time range",
+                    "allOf": [
+                        {
+                            "$ref": "#/definitions/models.TimeRange"
+                        }
+                    ]
+                },
+                "topic": {
+                    "description": "Search category\ndefault: general",
+                    "allOf": [
+                        {
+                            "$ref": "#/definitions/models.Topic"
+                        }
+                    ]
+                }
+            }
+        },
+        "models.SearchResponse": {
+            "type": "object",
+            "properties": {
+                "answer": {
+                    "description": "AI-generated answer based on search results (if requested)",
+                    "type": "string"
+                },
+                "images": {
+                    "description": "List of image results (if requested)",
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/models.ImageResult"
+                    }
+                },
+                "query": {
+                    "description": "The original search query",
+                    "type": "string"
+                },
+                "response_time": {
+                    "description": "Total response time in seconds",
+                    "type": "number"
+                },
+                "results": {
+                    "description": "List of search results",
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/models.SearchResult"
+                    }
+                }
+            }
+        },
+        "models.SearchResult": {
+            "type": "object",
+            "properties": {
+                "content": {
+                    "description": "Short snippet / description",
+                    "type": "string"
+                },
+                "raw_content": {
+                    "description": "Full extracted page content (if requested)",
+                    "type": "string"
+                },
+                "score": {
+                    "description": "Relevance score (0-1)",
+                    "type": "number"
+                },
+                "title": {
+                    "description": "Title of the page",
+                    "type": "string"
+                },
+                "url": {
+                    "description": "URL of the page",
+                    "type": "string"
+                }
+            }
+        },
+        "models.TimeRange": {
+            "type": "string",
+            "enum": [
+                "day",
+                "week",
+                "month",
+                "year"
+            ],
+            "x-enum-varnames": [
+                "TimeRangeDay",
+                "TimeRangeWeek",
+                "TimeRangeMonth",
+                "TimeRangeYear"
+            ]
+        },
+        "models.Topic": {
+            "type": "string",
+            "enum": [
+                "general",
+                "news"
+            ],
+            "x-enum-varnames": [
+                "TopicGeneral",
+                "TopicNews"
+            ]
+        }
+    }
+}
