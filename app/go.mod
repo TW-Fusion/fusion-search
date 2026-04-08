@@ -9,6 +9,7 @@ require (
 	github.com/go-redis/redis/v8 v8.11.5
 	github.com/google/uuid v1.6.0
 	github.com/sashabaranov/go-openai v1.41.2
+	github.com/sony/gobreaker v1.0.0
 	github.com/sugarme/tokenizer v0.3.0
 	github.com/swaggo/files v1.0.1
 	github.com/swaggo/gin-swagger v1.6.1

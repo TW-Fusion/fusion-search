@@ -22,6 +22,7 @@ func ExtractRouter(
 	rateLimiter *middleware.RateLimiter,
 ) {
 	router := r.Group("/extract")
+	router.Use(middleware.AuthMiddleware(cfg))
 	router.Use(rateLimiter.Limit(cfg.RateLimit.ExtractRate))
 	router.POST("", ExtractHandler(cfg, cache, extractor))
 }

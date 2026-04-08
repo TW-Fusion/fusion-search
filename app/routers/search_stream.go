@@ -25,6 +25,7 @@ func SearchStreamRouter(
 	rateLimiter *middleware.RateLimiter,
 ) {
 	router := r.Group("/search/stream")
+	router.Use(middleware.AuthMiddleware(cfg))
 	router.Use(rateLimiter.Limit(cfg.RateLimit.SearchRate))
 	router.POST("", SearchStreamHandler(cfg, searchBackend, extractor, llmService))
 }

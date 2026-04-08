@@ -4,11 +4,15 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"io"
 	"net/http"
+	neturl "net/url"
+	"regexp"
 	"strings"
 
 	"github.com/TW-Fusion/fusion-search/app/config"
 	"github.com/TW-Fusion/fusion-search/app/logging"
+	"github.com/sony/gobreaker"
 
 	"go.uber.org/zap"
 )
@@ -54,6 +58,7 @@ type SearXNGBackend struct {
 	httpClient *http.Client
 	logger     *zap.SugaredLogger
 	cfg        *config.AppConfig
+	breaker    *gobreaker.CircuitBreaker
 }
 
 func NewSearXNGBackend(cfg *config.AppConfig, httpClient *http.Client) *SearXNGBackend {
@@ -62,6 +67,7 @@ func NewSearXNGBackend(cfg *config.AppConfig, httpClient *http.Client) *SearXNGB
 		httpClient: httpClient,
 		logger:     logging.GetLogger(),
 		cfg:        cfg,
+		breaker:    newCircuitBreaker("search_backend", cfg),
 	}
 }
 
@@ -83,15 +89,14 @@ func (s *SearXNGBackend) Search(ctx context.Context, query string, opts SearchOp
 		categories = "news"
 	}
 
-	// Perform web search
-	results, err := s.webSearch(ctx, effectiveQuery, opts.MaxResults, categories, opts.TimeRange)
+	results, err := s.webSearchWithRetry(ctx, effectiveQuery, opts.MaxResults, categories, opts.TimeRange)
 	if err != nil {
 		return nil, err
 	}
 
 	images := []RawImageResult{}
 	if opts.IncludeImages {
-		imgResults, err := s.imageSearch(ctx, query, 5)
+		imgResults, err := s.imageSearchWithRetry(ctx, query, 5)
 		if err != nil {
 			s.logger.Warnw("image_search_failed", "error", err)
 		} else {
@@ -103,6 +108,30 @@ func (s *SearXNGBackend) Search(ctx context.Context, query string, opts SearchOp
 		Results: results,
 		Images:  images,
 	}, nil
+}
+
+func (s *SearXNGBackend) webSearchWithRetry(ctx context.Context, query string, maxResults int, categories string, timeRange *string) ([]RawSearchResult, error) {
+	result, err := s.breaker.Execute(func() (interface{}, error) {
+		return retryWithBackoff(ctx, s.cfg.Resilience.RetryMaxAttempts, s.cfg.Resilience.RetryBackoffBase, s.cfg.Resilience.RetryOnStatusCodes, func() ([]RawSearchResult, error) {
+			return s.webSearch(ctx, query, maxResults, categories, timeRange)
+		})
+	})
+	if err != nil {
+		return nil, err
+	}
+	return result.([]RawSearchResult), nil
+}
+
+func (s *SearXNGBackend) imageSearchWithRetry(ctx context.Context, query string, maxResults int) ([]RawImageResult, error) {
+	result, err := s.breaker.Execute(func() (interface{}, error) {
+		return retryWithBackoff(ctx, s.cfg.Resilience.RetryMaxAttempts, s.cfg.Resilience.RetryBackoffBase, s.cfg.Resilience.RetryOnStatusCodes, func() ([]RawImageResult, error) {
+			return s.imageSearch(ctx, query, maxResults)
+		})
+	})
+	if err != nil {
+		return nil, err
+	}
+	return result.([]RawImageResult), nil
 }
 
 func (s *SearXNGBackend) webSearch(ctx context.Context, query string, maxResults int, categories string, timeRange *string) ([]RawSearchResult, error) {
@@ -128,7 +157,7 @@ func (s *SearXNGBackend) webSearch(ctx context.Context, query string, maxResults
 	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusOK {
-		return nil, fmt.Errorf("search request failed with status: %d", resp.StatusCode)
+		return nil, &HTTPStatusError{StatusCode: resp.StatusCode, Message: fmt.Sprintf("search request failed with status: %d", resp.StatusCode)}
 	}
 
 	var data map[string]interface{}
@@ -189,7 +218,7 @@ func (s *SearXNGBackend) imageSearch(ctx context.Context, query string, maxResul
 	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusOK {
-		return nil, fmt.Errorf("image search request failed with status: %d", resp.StatusCode)
+		return nil, &HTTPStatusError{StatusCode: resp.StatusCode, Message: fmt.Sprintf("image search request failed with status: %d", resp.StatusCode)}
 	}
 
 	var data map[string]interface{}
@@ -227,12 +256,18 @@ func (s *SearXNGBackend) imageSearch(ctx context.Context, query string, maxResul
 
 // DuckDuckGoBackend implements SearchBackend for DuckDuckGo
 type DuckDuckGoBackend struct {
-	logger *zap.SugaredLogger
+	logger     *zap.SugaredLogger
+	httpClient *http.Client
+	cfg        *config.AppConfig
+	breaker    *gobreaker.CircuitBreaker
 }
 
-func NewDuckDuckGoBackend() *DuckDuckGoBackend {
+func NewDuckDuckGoBackend(cfg *config.AppConfig, httpClient *http.Client) *DuckDuckGoBackend {
 	return &DuckDuckGoBackend{
-		logger: logging.GetLogger(),
+		logger:     logging.GetLogger(),
+		httpClient: httpClient,
+		cfg:        cfg,
+		breaker:    newCircuitBreaker("duckduckgo_backend", cfg),
 	}
 }
 
@@ -249,18 +284,27 @@ func (d *DuckDuckGoBackend) Search(ctx context.Context, query string, opts Searc
 		}
 	}
 
-	results, err := d.webSearch(ctx, effectiveQuery, opts.MaxResults, opts.TimeRange)
+	resultsAny, err := d.breaker.Execute(func() (interface{}, error) {
+		return retryWithBackoff(ctx, d.cfg.Resilience.RetryMaxAttempts, d.cfg.Resilience.RetryBackoffBase, d.cfg.Resilience.RetryOnStatusCodes, func() ([]RawSearchResult, error) {
+			return d.webSearch(ctx, effectiveQuery, opts.MaxResults, opts.TimeRange)
+		})
+	})
 	if err != nil {
 		return nil, err
 	}
+	results := resultsAny.([]RawSearchResult)
 
 	images := []RawImageResult{}
 	if opts.IncludeImages {
-		imgResults, err := d.imageSearch(ctx, query, 5)
+		imgAny, err := d.breaker.Execute(func() (interface{}, error) {
+			return retryWithBackoff(ctx, d.cfg.Resilience.RetryMaxAttempts, d.cfg.Resilience.RetryBackoffBase, d.cfg.Resilience.RetryOnStatusCodes, func() ([]RawImageResult, error) {
+				return d.imageSearch(ctx, query, 5)
+			})
+		})
 		if err != nil {
 			d.logger.Warnw("image_search_failed", "error", err)
 		} else {
-			images = imgResults
+			images = imgAny.([]RawImageResult)
 		}
 	}
 
@@ -271,15 +315,138 @@ func (d *DuckDuckGoBackend) Search(ctx context.Context, query string, opts Searc
 }
 
 func (d *DuckDuckGoBackend) webSearch(ctx context.Context, query string, maxResults int, timeRange *string) ([]RawSearchResult, error) {
-	// DuckDuckGo search is not directly available in Go without external libraries
-	// This is a placeholder - in production, you'd use a proper DDGS library or API
-	d.logger.Warn("duckduckgo_backend_not_fully_implemented")
-	return []RawSearchResult{}, nil
+	reqURL := fmt.Sprintf("https://html.duckduckgo.com/html/?q=%s", neturl.QueryEscape(query))
+	if timeRange != nil {
+		m := map[string]string{"day": "d", "week": "w", "month": "m", "year": "y"}
+		if v, ok := m[*timeRange]; ok {
+			reqURL += "&df=" + v
+		}
+	}
+	req, err := http.NewRequestWithContext(ctx, "GET", reqURL, nil)
+	if err != nil {
+		return nil, err
+	}
+	resp, err := d.httpClient.Do(req)
+	if err != nil {
+		return nil, err
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode != http.StatusOK {
+		return nil, &HTTPStatusError{StatusCode: resp.StatusCode, Message: fmt.Sprintf("duckduckgo web request failed with status: %d", resp.StatusCode)}
+	}
+	body, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return nil, err
+	}
+	html := string(body)
+	itemRe := regexp.MustCompile(`(?s)<a[^>]*class="[^"]*result__a[^"]*"[^>]*href="([^"]+)"[^>]*>(.*?)</a>`)
+	snippetRe := regexp.MustCompile(`(?s)<a[^>]*class="[^"]*result__snippet[^"]*"[^>]*>(.*?)</a>|<div[^>]*class="[^"]*result__snippet[^"]*"[^>]*>(.*?)</div>`)
+	tagRe := regexp.MustCompile(`(?s)<[^>]+>`)
+	matches := itemRe.FindAllStringSubmatch(html, maxResults)
+	snippets := snippetRe.FindAllStringSubmatch(html, maxResults)
+	results := make([]RawSearchResult, 0, len(matches))
+	for i, m := range matches {
+		link := decodeDDGRedirectURL(m[1])
+		title := strings.TrimSpace(tagRe.ReplaceAllString(m[2], " "))
+		snippet := ""
+		if i < len(snippets) {
+			snippet = strings.TrimSpace(tagRe.ReplaceAllString(firstNonEmpty(snippets[i][1], snippets[i][2]), " "))
+		}
+		score := 1.0 - float64(i)*0.05
+		if score < 0.1 {
+			score = 0.1
+		}
+		results = append(results, RawSearchResult{Title: title, URL: link, Snippet: snippet, Score: score})
+	}
+	return results, nil
 }
 
 func (d *DuckDuckGoBackend) imageSearch(ctx context.Context, query string, maxResults int) ([]RawImageResult, error) {
-	// Placeholder implementation
-	return []RawImageResult{}, nil
+	token, err := d.fetchVQD(ctx, query)
+	if err != nil {
+		return nil, err
+	}
+	reqURL := fmt.Sprintf("https://duckduckgo.com/i.js?l=wt-wt&o=json&q=%s&vqd=%s&p=1", neturl.QueryEscape(query), neturl.QueryEscape(token))
+	req, err := http.NewRequestWithContext(ctx, "GET", reqURL, nil)
+	if err != nil {
+		return nil, err
+	}
+	req.Header.Set("Referer", "https://duckduckgo.com/")
+	req.Header.Set("X-Requested-With", "XMLHttpRequest")
+	resp, err := d.httpClient.Do(req)
+	if err != nil {
+		return nil, err
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode != http.StatusOK {
+		return nil, &HTTPStatusError{StatusCode: resp.StatusCode, Message: fmt.Sprintf("duckduckgo image request failed with status: %d", resp.StatusCode)}
+	}
+	var data struct {
+		Results []struct {
+			Image string `json:"image"`
+			Title string `json:"title"`
+		} `json:"results"`
+	}
+	if err := json.NewDecoder(resp.Body).Decode(&data); err != nil {
+		return nil, err
+	}
+	images := make([]RawImageResult, 0, maxResults)
+	for i, item := range data.Results {
+		if i >= maxResults {
+			break
+		}
+		if item.Image == "" {
+			continue
+		}
+		images = append(images, RawImageResult{URL: item.Image, Description: item.Title})
+	}
+	return images, nil
+}
+
+func (d *DuckDuckGoBackend) fetchVQD(ctx context.Context, query string) (string, error) {
+	reqURL := fmt.Sprintf("https://duckduckgo.com/?q=%s", neturl.QueryEscape(query))
+	req, err := http.NewRequestWithContext(ctx, "GET", reqURL, nil)
+	if err != nil {
+		return "", err
+	}
+	resp, err := d.httpClient.Do(req)
+	if err != nil {
+		return "", err
+	}
+	defer resp.Body.Close()
+	body, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return "", err
+	}
+	re := regexp.MustCompile(`vqd=\\?"([^"]+)"|vqd='([^']+)'`)
+	m := re.FindStringSubmatch(string(body))
+	if len(m) > 1 {
+		return firstNonEmpty(m[1], m[2]), nil
+	}
+	return "", fmt.Errorf("duckduckgo vqd token not found")
+}
+
+func decodeDDGRedirectURL(raw string) string {
+	u, err := neturl.Parse(raw)
+	if err != nil {
+		return raw
+	}
+	q := u.Query().Get("uddg")
+	if q == "" {
+		return raw
+	}
+	decoded, err := neturl.QueryUnescape(q)
+	if err != nil {
+		return q
+	}
+	return decoded
+}
+
+func firstNonEmpty(a, b string) string {
+	if a != "" {
+		return a
+	}
+	return b
 }
 
 // FallbackSearchBackend implements fallback logic
@@ -315,13 +482,13 @@ func CreateSearchBackend(cfg *config.AppConfig, httpClient *http.Client) SearchB
 	case "searxng":
 		primary = NewSearXNGBackend(cfg, httpClient)
 	case "duckduckgo":
-		primary = NewDuckDuckGoBackend()
+		primary = NewDuckDuckGoBackend(cfg, httpClient)
 	default:
 		panic(fmt.Sprintf("Unknown search backend: %s. Supported: searxng, duckduckgo", backendName))
 	}
 
 	if cfg.Resilience.BackendFallback && backendName == "searxng" {
-		fallback := NewDuckDuckGoBackend()
+		fallback := NewDuckDuckGoBackend(cfg, httpClient)
 		return NewFallbackSearchBackend(primary, fallback)
 	}
 

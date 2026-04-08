@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"net/http"
+	neturl "net/url"
 	"os"
 	"os/signal"
 	"syscall"
@@ -42,12 +43,22 @@ func main() {
 	logger.Info("starting", "service", "FusionSearch")
 
 	// Create HTTP clients
+	var proxyFunc func(*http.Request) (*neturl.URL, error)
+	if cfg.Proxy.Enabled && cfg.Proxy.URL != "" {
+		if parsedProxyURL, err := neturl.Parse(cfg.Proxy.URL); err == nil {
+			proxyFunc = http.ProxyURL(parsedProxyURL)
+		} else {
+			logger.Warnw("proxy_parse_failed", "error", err, "proxy_url", cfg.Proxy.URL)
+		}
+	}
+
 	searchHTTPClient := &http.Client{
 		Timeout: 15 * time.Second,
 		Transport: &http.Transport{
 			MaxIdleConns:        10,
 			MaxIdleConnsPerHost: 5,
 			IdleConnTimeout:     30 * time.Second,
+			Proxy:               proxyFunc,
 		},
 	}
 
@@ -57,6 +68,7 @@ func main() {
 			MaxIdleConns:        50,
 			MaxIdleConnsPerHost: 20,
 			IdleConnTimeout:     30 * time.Second,
+			Proxy:               proxyFunc,
 		},
 	}
 
@@ -94,9 +106,6 @@ func main() {
 	corsConfig.AllowHeaders = []string{"*"}
 	corsConfig.AllowMethods = []string{"GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"}
 	r.Use(cors.New(corsConfig))
-
-	// Auth middleware
-	r.Use(middleware.AuthMiddleware(cfg))
 
 	// Setup routes
 	routers.Setup(r, cfg, cacheService, searchBackend, contentExtractor, llmService, rerankerService, rateLimiter)

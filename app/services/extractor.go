@@ -3,6 +3,7 @@ package services
 import (
 	"bytes"
 	"context"
+	"errors"
 	"fmt"
 	"io"
 	"math/rand"
@@ -17,6 +18,7 @@ import (
 	readability "codeberg.org/readeck/go-readability/v2"
 	"github.com/TW-Fusion/fusion-search/app/config"
 	"github.com/TW-Fusion/fusion-search/app/logging"
+	"github.com/sony/gobreaker"
 
 	"go.uber.org/zap"
 )
@@ -42,6 +44,7 @@ type ContentExtractor struct {
 	maxDomains        int
 	globalSemaphore   chan struct{}
 	logger            *zap.SugaredLogger
+	breaker           *gobreaker.CircuitBreaker
 }
 
 func NewContentExtractor(cfg *config.AppConfig, httpClient *http.Client) *ContentExtractor {
@@ -58,6 +61,7 @@ func NewContentExtractor(cfg *config.AppConfig, httpClient *http.Client) *Conten
 		maxDomains:        cfg.Extraction.DomainSemaphoreMaxSize,
 		globalSemaphore:   globalSemaphore,
 		logger:            logging.GetLogger(),
+		breaker:           newCircuitBreaker("extract_backend", cfg),
 	}
 }
 
@@ -174,8 +178,14 @@ func (ce *ContentExtractor) fetchAndExtract(ctx context.Context, urlStr string, 
 		}
 	}
 
-	resp, err := ce.httpClient.Do(req)
+	resp, err := ce.fetchWithResilience(ctx, req)
 	if err != nil {
+		if errors.Is(err, gobreaker.ErrOpenState) || errors.Is(err, gobreaker.ErrTooManyRequests) {
+			return &ExtractionResult{
+				URL:   urlStr,
+				Error: strPtr("Service temporarily unavailable (circuit open)"),
+			}
+		}
 		if strings.Contains(err.Error(), "timeout") {
 			return &ExtractionResult{
 				URL:   urlStr,
@@ -192,7 +202,7 @@ func (ce *ContentExtractor) fetchAndExtract(ctx context.Context, urlStr string, 
 	if resp.StatusCode != http.StatusOK {
 		return &ExtractionResult{
 			URL:   urlStr,
-			Error: strPtr(fmt.Sprintf("HTTP %d", resp.StatusCode)),
+			Error: strPtr((&HTTPStatusError{StatusCode: resp.StatusCode, Message: fmt.Sprintf("HTTP %d", resp.StatusCode)}).Error()),
 		}
 	}
 
@@ -238,6 +248,29 @@ func (ce *ContentExtractor) fetchAndExtract(ctx context.Context, urlStr string, 
 		URL:     urlStr,
 		Content: &extracted,
 	}
+}
+
+func (ce *ContentExtractor) fetchWithResilience(ctx context.Context, req *http.Request) (*http.Response, error) {
+	result, err := ce.breaker.Execute(func() (interface{}, error) {
+		return retryWithBackoff(ctx, ce.cfg.Resilience.RetryMaxAttempts, ce.cfg.Resilience.RetryBackoffBase, ce.cfg.Resilience.RetryOnStatusCodes, func() (*http.Response, error) {
+			resp, err := ce.httpClient.Do(req.Clone(ctx))
+			if err != nil {
+				return nil, err
+			}
+			if resp.StatusCode >= 400 {
+				resp.Body.Close()
+				return nil, &HTTPStatusError{
+					StatusCode: resp.StatusCode,
+					Message:    fmt.Sprintf("HTTP %d", resp.StatusCode),
+				}
+			}
+			return resp, nil
+		})
+	})
+	if err != nil {
+		return nil, err
+	}
+	return result.(*http.Response), nil
 }
 
 func (ce *ContentExtractor) extractWithReadability(raw []byte, html, urlStr, outputFormat string) string {
