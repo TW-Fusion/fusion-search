@@ -15,6 +15,7 @@ type ServerConfig struct {
 type SearchConfig struct {
 	Backend      string `yaml:"backend" json:"backend"`
 	SearxngURL   string `yaml:"searxng_url" json:"searxng_url"`
+	DDGSURL      string `yaml:"ddgs_url" json:"ddgs_url"`
 	GoogleAPIKey string `yaml:"google_api_key" json:"google_api_key"`
 	GoogleCX     string `yaml:"google_cx" json:"google_cx"`
 }
@@ -151,6 +152,9 @@ func LoadConfig(configPath string) (*AppConfig, error) {
 	if cfg.Search.SearxngURL == "" {
 		cfg.Search.SearxngURL = "http://searxng:8080"
 	}
+	if cfg.Search.DDGSURL == "" {
+		cfg.Search.DDGSURL = "http://ddgs:9000"
+	}
 	if cfg.Extraction.MaxConcurrent == 0 {
 		cfg.Extraction.MaxConcurrent = 5
 	}
@@ -233,6 +237,7 @@ func DefaultConfig() *AppConfig {
 		Search: SearchConfig{
 			Backend:    "searxng",
 			SearxngURL: "http://searxng:8080",
+			DDGSURL:    "http://ddgs:9000",
 		},
 		Extraction: ExtractionConfig{
 			MaxConcurrent:          5,

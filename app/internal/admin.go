@@ -161,14 +161,29 @@ func handleGetConfig(configPath string) gin.HandlerFunc {
 // Handle update config
 func handleUpdateConfig(configPath string) gin.HandlerFunc {
 	return func(c *gin.Context) {
-		var config map[string]interface{}
-		if err := c.ShouldBindJSON(&config); err != nil {
+		var incoming map[string]interface{}
+		if err := c.ShouldBindJSON(&incoming); err != nil {
 			c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid request body"})
 			return
 		}
 
+		// Read existing config so unknown fields are preserved.
+		existingData, err := os.ReadFile(configPath)
+		if err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to read config file"})
+			return
+		}
+
+		var existing map[string]interface{}
+		if err := yaml.Unmarshal(existingData, &existing); err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to parse config file"})
+			return
+		}
+
+		merged := mergeConfigMaps(existing, incoming)
+
 		// Marshal to YAML
-		yamlData, err := yaml.Marshal(&config)
+		yamlData, err := yaml.Marshal(&merged)
 		if err != nil {
 			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to marshal config"})
 			return
@@ -184,6 +199,24 @@ func handleUpdateConfig(configPath string) gin.HandlerFunc {
 			"message": "Configuration updated successfully",
 		})
 	}
+}
+
+func mergeConfigMaps(base, updates map[string]interface{}) map[string]interface{} {
+	if base == nil {
+		base = map[string]interface{}{}
+	}
+	for k, v := range updates {
+		if vmap, ok := v.(map[string]interface{}); ok {
+			if bmap, ok := base[k].(map[string]interface{}); ok {
+				base[k] = mergeConfigMaps(bmap, vmap)
+			} else {
+				base[k] = mergeConfigMaps(map[string]interface{}{}, vmap)
+			}
+			continue
+		}
+		base[k] = v
+	}
+	return base
 }
 
 // Handle change password

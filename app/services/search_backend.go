@@ -1,6 +1,7 @@
 package services
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"fmt"
@@ -315,6 +316,11 @@ func (d *DuckDuckGoBackend) Search(ctx context.Context, query string, opts Searc
 }
 
 func (d *DuckDuckGoBackend) webSearch(ctx context.Context, query string, maxResults int, timeRange *string) ([]RawSearchResult, error) {
+	if d.cfg.Search.DDGSURL != "" {
+		if results, err := d.webSearchViaDDGS(ctx, query, maxResults, timeRange); err == nil && len(results) > 0 {
+			return results, nil
+		}
+	}
 	reqURL := fmt.Sprintf("https://html.duckduckgo.com/html/?q=%s", neturl.QueryEscape(query))
 	if timeRange != nil {
 		m := map[string]string{"day": "d", "week": "w", "month": "m", "year": "y"}
@@ -362,6 +368,11 @@ func (d *DuckDuckGoBackend) webSearch(ctx context.Context, query string, maxResu
 }
 
 func (d *DuckDuckGoBackend) imageSearch(ctx context.Context, query string, maxResults int) ([]RawImageResult, error) {
+	if d.cfg.Search.DDGSURL != "" {
+		if images, err := d.imageSearchViaDDGS(ctx, query, maxResults); err == nil {
+			return images, nil
+		}
+	}
 	token, err := d.fetchVQD(ctx, query)
 	if err != nil {
 		return nil, err
@@ -399,6 +410,101 @@ func (d *DuckDuckGoBackend) imageSearch(ctx context.Context, query string, maxRe
 			continue
 		}
 		images = append(images, RawImageResult{URL: item.Image, Description: item.Title})
+	}
+	return images, nil
+}
+
+func (d *DuckDuckGoBackend) webSearchViaDDGS(ctx context.Context, query string, maxResults int, timeRange *string) ([]RawSearchResult, error) {
+	payload := map[string]interface{}{
+		"query":       query,
+		"max_results": maxResults,
+		"backend":     "duckduckgo",
+	}
+	if timeRange != nil {
+		m := map[string]string{"day": "d", "week": "w", "month": "m", "year": "y"}
+		if v, ok := m[*timeRange]; ok {
+			payload["timelimit"] = v
+		}
+	}
+	body, _ := json.Marshal(payload)
+	endpoint := strings.TrimRight(d.cfg.Search.DDGSURL, "/") + "/search/text"
+	req, err := http.NewRequestWithContext(ctx, "POST", endpoint, bytes.NewReader(body))
+	if err != nil {
+		return nil, err
+	}
+	req.Header.Set("Content-Type", "application/json")
+	resp, err := d.httpClient.Do(req)
+	if err != nil {
+		return nil, err
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode != http.StatusOK {
+		return nil, &HTTPStatusError{StatusCode: resp.StatusCode, Message: fmt.Sprintf("ddgs text request failed with status: %d", resp.StatusCode)}
+	}
+
+	var data []map[string]interface{}
+	if err := json.NewDecoder(resp.Body).Decode(&data); err != nil {
+		return nil, err
+	}
+	results := make([]RawSearchResult, 0, len(data))
+	for i, item := range data {
+		title, _ := item["title"].(string)
+		url := toString(item["href"])
+		if url == "" {
+			url = toString(item["url"])
+		}
+		snippet := toString(item["body"])
+		if snippet == "" {
+			snippet = toString(item["snippet"])
+		}
+		score := 1.0 - float64(i)*0.05
+		if score < 0.1 {
+			score = 0.1
+		}
+		results = append(results, RawSearchResult{Title: title, URL: url, Snippet: snippet, Score: score})
+	}
+	return results, nil
+}
+
+func (d *DuckDuckGoBackend) imageSearchViaDDGS(ctx context.Context, query string, maxResults int) ([]RawImageResult, error) {
+	payload := map[string]interface{}{
+		"query":       query,
+		"max_results": maxResults,
+		"backend":     "duckduckgo",
+	}
+	body, _ := json.Marshal(payload)
+	endpoint := strings.TrimRight(d.cfg.Search.DDGSURL, "/") + "/search/images"
+	req, err := http.NewRequestWithContext(ctx, "POST", endpoint, bytes.NewReader(body))
+	if err != nil {
+		return nil, err
+	}
+	req.Header.Set("Content-Type", "application/json")
+	resp, err := d.httpClient.Do(req)
+	if err != nil {
+		return nil, err
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode != http.StatusOK {
+		return nil, &HTTPStatusError{StatusCode: resp.StatusCode, Message: fmt.Sprintf("ddgs image request failed with status: %d", resp.StatusCode)}
+	}
+
+	var data []map[string]interface{}
+	if err := json.NewDecoder(resp.Body).Decode(&data); err != nil {
+		return nil, err
+	}
+	images := make([]RawImageResult, 0, len(data))
+	for _, item := range data {
+		imageURL := toString(item["image"])
+		if imageURL == "" {
+			imageURL = toString(item["url"])
+		}
+		if imageURL == "" {
+			continue
+		}
+		images = append(images, RawImageResult{
+			URL:         imageURL,
+			Description: toString(item["title"]),
+		})
 	}
 	return images, nil
 }
@@ -447,6 +553,13 @@ func firstNonEmpty(a, b string) string {
 		return a
 	}
 	return b
+}
+
+func toString(v interface{}) string {
+	if s, ok := v.(string); ok {
+		return s
+	}
+	return ""
 }
 
 // FallbackSearchBackend implements fallback logic

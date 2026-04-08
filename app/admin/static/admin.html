@@ -943,6 +943,11 @@
                                 <span class="help-text">SearXNG instance URL</span>
                             </div>
                             <div class="config-item">
+                                <label for="search.ddgs_url">DDGS API URL</label>
+                                <input type="text" id="search.ddgs_url" name="search.ddgs_url" data-path="search.ddgs_url">
+                                <span class="help-text">External DDGS API service URL</span>
+                            </div>
+                            <div class="config-item">
                                 <label for="search.google_api_key">Google API Key</label>
                                 <input type="text" id="search.google_api_key" name="search.google_api_key" data-path="search.google_api_key">
                                 <span class="help-text">Google Custom Search API key (optional)</span>
@@ -1168,6 +1173,26 @@
                                 <label for="rerank.top_k">Top K</label>
                                 <input type="number" id="rerank.top_k" name="rerank.top_k" data-path="rerank.top_k">
                                 <span class="help-text">Number of top results to return</span>
+                            </div>
+                            <div class="config-item">
+                                <label for="rerank.onnx_model_path">ONNX Model Path</label>
+                                <input type="text" id="rerank.onnx_model_path" name="rerank.onnx_model_path" data-path="rerank.onnx_model_path">
+                                <span class="help-text">Local ONNX model file path</span>
+                            </div>
+                            <div class="config-item">
+                                <label for="rerank.tokenizer_path">Tokenizer Path</label>
+                                <input type="text" id="rerank.tokenizer_path" name="rerank.tokenizer_path" data-path="rerank.tokenizer_path">
+                                <span class="help-text">Tokenizer JSON file path</span>
+                            </div>
+                            <div class="config-item">
+                                <label for="rerank.ort_library_path">ORT Library Path</label>
+                                <input type="text" id="rerank.ort_library_path" name="rerank.ort_library_path" data-path="rerank.ort_library_path">
+                                <span class="help-text">libonnxruntime shared library path</span>
+                            </div>
+                            <div class="config-item">
+                                <label for="rerank.max_length">Max Length</label>
+                                <input type="number" id="rerank.max_length" name="rerank.max_length" data-path="rerank.max_length">
+                                <span class="help-text">Tokenizer max sequence length</span>
                             </div>
                         </div>
                     </div>
@@ -1456,7 +1481,7 @@
             const formData = new FormData(form);
             
             // Build nested config object
-            const config = {};
+            const config = JSON.parse(JSON.stringify(currentConfig || {}));
             
             // Get all simple fields
             form.querySelectorAll('[data-path]').forEach(input => {

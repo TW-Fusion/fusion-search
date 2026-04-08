@@ -63,6 +63,7 @@ resilience:
     retry_max_attempts: 3
 search:
     backend: searxng
+    ddgs_url: http://ddgs:9000
     google_api_key: ""
     google_cx: ""
     searxng_url: http://192.168.6.207:9797
