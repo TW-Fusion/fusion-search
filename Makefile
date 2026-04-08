@@ -1,7 +1,8 @@
-.PHONY: build build-dev build-prod swagger run clean
+.PHONY: build build-dev build-prod swagger run clean docker-build docker-up docker-down docker-logs
 
 APP_DIR := app
 BINARY := fusion-search
+COMPOSE := docker compose
 
 # 去除调试信息的 ldflags
 # -s: 去除符号表
@@ -30,3 +31,19 @@ run: swagger build-dev
 # 清理
 clean:
 	cd $(APP_DIR) && rm -f $(BINARY) $(BINARY)-dev $(BINARY)-prod
+
+# 构建 Go API 镜像
+docker-build:
+	$(COMPOSE) build api
+
+# 启动 Go API（含依赖服务）
+docker-up:
+	$(COMPOSE) up -d api
+
+# 停止所有 compose 服务
+docker-down:
+	$(COMPOSE) down
+
+# 查看 API 日志
+docker-logs:
+	$(COMPOSE) logs -f api

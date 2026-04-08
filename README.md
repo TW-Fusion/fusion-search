@@ -42,8 +42,8 @@ goapp/
 - For production, consider using Go ports of these libraries or external services
 
 ### Reranking
-- Python uses `flashrank` library for neural reranking
-- Go version has a placeholder - you'd need to integrate with a reranking API or ML service
+- Go version supports local ONNX reranking (cross-encoder) with ONNX Runtime
+- Recommended model: `cross-encoder/ms-marco-MiniLM-L12-v2` ONNX artifacts
 
 ### Search Backends
 - SearXNG backend is fully implemented
@@ -112,7 +112,6 @@ Fusion Search includes a built-in admin console for configuration management.
 ⚠️ **Partial/Placeholder**:
 - DuckDuckGo backend (needs external library)
 - Content extraction (simplified HTML-to-text, not as advanced as trafilatura)
-- Reranking service (not implemented, would need ML integration)
 
 ## Performance Considerations
 

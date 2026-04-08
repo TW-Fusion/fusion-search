@@ -1,17 +1,20 @@
 package services
 
 import (
+	"bytes"
 	"context"
 	"fmt"
 	"io"
 	"math/rand"
 	"net/http"
 	"net/url"
+	neturl "net/url"
 	"regexp"
 	"strings"
 	"sync"
 	"time"
 
+	readability "codeberg.org/readeck/go-readability/v2"
 	"github.com/TW-Fusion/fusion-search/app/config"
 	"github.com/TW-Fusion/fusion-search/app/logging"
 
@@ -211,8 +214,8 @@ func (ce *ContentExtractor) fetchAndExtract(ctx context.Context, urlStr string, 
 
 	html := string(body)
 
-	// Try trafilatura-like extraction (simplified HTML to text)
-	extracted := ce.extractSimple(html, urlStr, outputFormat)
+	// Use readability-based extraction first.
+	extracted := ce.extractWithReadability(body, html, urlStr, outputFormat)
 
 	if extracted == "" || len(strings.TrimSpace(extracted)) < 50 {
 		ce.logger.Infow("extraction_fallback", "url", urlStr)
@@ -235,6 +238,49 @@ func (ce *ContentExtractor) fetchAndExtract(ctx context.Context, urlStr string, 
 		URL:     urlStr,
 		Content: &extracted,
 	}
+}
+
+func (ce *ContentExtractor) extractWithReadability(raw []byte, html, urlStr, outputFormat string) string {
+	parsedURL, err := neturl.Parse(urlStr)
+	if err != nil {
+		return ""
+	}
+
+	article, err := readability.FromReader(strings.NewReader(string(raw)), parsedURL)
+	if err != nil {
+		return ""
+	}
+
+	var textBuf bytes.Buffer
+	if err := article.RenderText(&textBuf); err != nil {
+		return ""
+	}
+	text := strings.TrimSpace(textBuf.String())
+	if text == "" {
+		return ""
+	}
+
+	if outputFormat == "markdown" {
+		title := strings.TrimSpace(article.Title())
+		if title == "" {
+			// Fallback to title extraction from original HTML.
+			re := regexp.MustCompile(`(?i)<title[^>]*>(.*?)</title>`)
+			if matches := re.FindStringSubmatch(html); len(matches) > 1 {
+				title = strings.TrimSpace(matches[1])
+			}
+		}
+
+		lines := []string{}
+		if title != "" {
+			lines = append(lines, fmt.Sprintf("# %s\n", title))
+		}
+		lines = append(lines, fmt.Sprintf("Source: %s\n", urlStr))
+		lines = append(lines, "---\n")
+		lines = append(lines, text)
+		return strings.Join(lines, "\n")
+	}
+
+	return text
 }
 
 func (ce *ContentExtractor) extractSimple(html, urlStr, outputFormat string) string {
