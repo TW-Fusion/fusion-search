@@ -18,11 +18,11 @@
             --border-color: #30363d;
             --text-primary: #c9d1d9;
             --text-secondary: #8b949e;
-            --accent-blue: #58a6ff;
-            --accent-green: #238636;
+            --accent-blue: #f3f4f6;
+            --accent-green: #dc2626;
             --accent-red: #da3633;
-            --accent-orange: #d29922;
-            --accent-purple: #bc8cff;
+            --accent-orange: #ef4444;
+            --accent-purple: #ef4444;
             --input-bg: #0d1117;
             --shadow: 0 8px 24px rgba(0, 0, 0, 0.5);
         }
@@ -33,9 +33,9 @@
             color: var(--text-primary);
             line-height: 1.6;
             min-height: 100vh;
-            background-image: 
-                radial-gradient(circle at 20% 50%, rgba(88, 166, 255, 0.03) 0%, transparent 50%),
-                radial-gradient(circle at 80% 80%, rgba(188, 140, 255, 0.03) 0%, transparent 50%);
+            background-image:
+                radial-gradient(circle at 20% 50%, rgba(218, 54, 51, 0.06) 0%, transparent 50%),
+                radial-gradient(circle at 80% 80%, rgba(255, 255, 255, 0.03) 0%, transparent 50%);
         }
 
         .container {
@@ -45,7 +45,7 @@
         }
 
         header {
-            background: linear-gradient(135deg, var(--bg-secondary), #1a1f27);
+            background: linear-gradient(135deg, var(--bg-secondary), #14171d);
             border-bottom: 2px solid var(--border-color);
             padding: 18px 0;
             margin-bottom: 32px;
@@ -70,22 +70,22 @@
         .logo-icon {
             width: 36px;
             height: 36px;
-            background: linear-gradient(135deg, var(--accent-blue), var(--accent-purple));
+            background: linear-gradient(135deg, var(--accent-red), #7f1d1d);
             border-radius: 10px;
             display: flex;
             align-items: center;
             justify-content: center;
             font-size: 20px;
-            box-shadow: 0 4px 12px rgba(88, 166, 255, 0.3);
+            box-shadow: 0 4px 12px rgba(218, 54, 51, 0.35);
             animation: pulse 2s ease-in-out infinite;
         }
 
         @keyframes pulse {
             0%, 100% {
-                box-shadow: 0 4px 12px rgba(88, 166, 255, 0.3);
+                box-shadow: 0 4px 12px rgba(218, 54, 51, 0.35);
             }
             50% {
-                box-shadow: 0 4px 20px rgba(88, 166, 255, 0.5);
+                box-shadow: 0 4px 20px rgba(218, 54, 51, 0.45);
             }
         }
 
@@ -139,15 +139,15 @@
         }
 
         .btn-primary {
-            background: linear-gradient(135deg, var(--accent-green), #2ea043);
-            border-color: var(--accent-green);
+            background: linear-gradient(135deg, var(--accent-red), #ef4444);
+            border-color: var(--accent-red);
             color: white;
             font-weight: 600;
         }
 
         .btn-primary:hover {
-            background: linear-gradient(135deg, #2ea043, #3fb950);
-            box-shadow: 0 4px 12px rgba(35, 134, 54, 0.4);
+            background: linear-gradient(135deg, #ef4444, #f87171);
+            box-shadow: 0 4px 12px rgba(218, 54, 51, 0.4);
         }
 
         .btn-danger {
@@ -188,7 +188,7 @@
         }
 
         .modal {
-            background: linear-gradient(135deg, var(--bg-secondary) 0%, #1a1f27 100%);
+            background: linear-gradient(135deg, var(--bg-secondary) 0%, #14171d 100%);
             border: 2px solid var(--border-color);
             border-radius: 16px;
             padding: 36px;
@@ -212,7 +212,7 @@
         .modal h2 {
             margin-bottom: 10px;
             font-size: 26px;
-            background: linear-gradient(135deg, var(--text-primary), var(--accent-blue));
+            background: linear-gradient(135deg, var(--text-primary), #ffffff);
             -webkit-background-clip: text;
             -webkit-text-fill-color: transparent;
             background-clip: text;
@@ -245,7 +245,7 @@
             content: '';
             width: 3px;
             height: 14px;
-            background: linear-gradient(180deg, var(--accent-blue), var(--accent-purple));
+            background: linear-gradient(180deg, var(--accent-red), #ef4444);
             border-radius: 2px;
         }
 
@@ -260,6 +260,7 @@
             color: var(--text-primary);
             font-size: 14px;
             font-family: inherit;
+            caret-color: var(--text-primary);
             transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
             backdrop-filter: blur(10px);
         }
@@ -267,7 +268,7 @@
         .form-group input:hover,
         .form-group select:hover,
         .form-group textarea:hover {
-            border-color: rgba(88, 166, 255, 0.3);
+            border-color: rgba(218, 54, 51, 0.4);
             background: linear-gradient(135deg, rgba(13, 17, 23, 0.9), rgba(22, 27, 34, 0.7));
             transform: translateY(-1px);
             box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
@@ -277,11 +278,11 @@
         .form-group select:focus,
         .form-group textarea:focus {
             outline: none;
-            border-color: var(--accent-blue);
+            border-color: var(--accent-red);
             background: linear-gradient(135deg, rgba(13, 17, 23, 0.95), rgba(22, 27, 34, 0.8));
             box-shadow: 
-                0 0 0 4px rgba(88, 166, 255, 0.1),
-                0 8px 24px rgba(88, 166, 255, 0.15),
+                0 0 0 4px rgba(218, 54, 51, 0.12),
+                0 8px 24px rgba(218, 54, 51, 0.2),
                 inset 0 1px 0 rgba(255, 255, 255, 0.05);
             transform: translateY(-2px);
         }
@@ -298,7 +299,7 @@
             height: 22px;
             margin-right: 12px;
             cursor: pointer;
-            accent-color: var(--accent-blue);
+            accent-color: var(--accent-red);
             border-radius: 6px;
             transition: all 0.3s;
         }
@@ -322,8 +323,8 @@
         }
 
         .form-group select option:checked {
-            background: linear-gradient(135deg, rgba(88, 166, 255, 0.2), rgba(188, 140, 255, 0.2));
-            color: var(--accent-blue);
+            background: linear-gradient(135deg, rgba(218, 54, 51, 0.2), rgba(255, 255, 255, 0.14));
+            color: #ffffff;
             font-weight: 600;
         }
 
@@ -400,8 +401,8 @@
 
         .alert-success {
             background: rgba(35, 134, 54, 0.15);
-            border: 2px solid var(--accent-green);
-            color: #3fb950;
+            border: 2px solid var(--accent-red);
+            color: #f87171;
             backdrop-filter: blur(10px);
         }
 
@@ -414,7 +415,7 @@
 
         /* Config Sections */
         .config-section {
-            background: linear-gradient(135deg, var(--bg-secondary) 0%, #1a1f27 100%);
+            background: linear-gradient(135deg, var(--bg-secondary) 0%, #14171d 100%);
             border: 2px solid var(--border-color);
             border-radius: 16px;
             padding: 28px;
@@ -434,7 +435,7 @@
             display: flex;
             align-items: center;
             gap: 10px;
-            background: linear-gradient(135deg, var(--text-primary), var(--accent-blue));
+            background: linear-gradient(135deg, var(--text-primary), #ffffff);
             -webkit-background-clip: text;
             -webkit-text-fill-color: transparent;
             background-clip: text;
@@ -478,7 +479,7 @@
             content: '';
             width: 3px;
             height: 14px;
-            background: linear-gradient(180deg, var(--accent-blue), var(--accent-purple));
+            background: linear-gradient(180deg, var(--accent-red), #ef4444);
             border-radius: 2px;
         }
 
@@ -493,6 +494,7 @@
             color: var(--text-primary);
             font-size: 14px;
             font-family: inherit;
+            caret-color: var(--text-primary);
             transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
             backdrop-filter: blur(10px);
         }
@@ -500,7 +502,7 @@
         .config-item input:hover,
         .config-item select:hover,
         .config-item textarea:hover {
-            border-color: rgba(88, 166, 255, 0.3);
+            border-color: rgba(218, 54, 51, 0.4);
             background: linear-gradient(135deg, rgba(13, 17, 23, 0.9), rgba(22, 27, 34, 0.7));
             transform: translateY(-1px);
             box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
@@ -510,11 +512,11 @@
         .config-item select:focus,
         .config-item textarea:focus {
             outline: none;
-            border-color: var(--accent-blue);
+            border-color: var(--accent-red);
             background: linear-gradient(135deg, rgba(13, 17, 23, 0.95), rgba(22, 27, 34, 0.8));
             box-shadow: 
-                0 0 0 4px rgba(88, 166, 255, 0.1),
-                0 8px 24px rgba(88, 166, 255, 0.15),
+                0 0 0 4px rgba(218, 54, 51, 0.12),
+                0 8px 24px rgba(218, 54, 51, 0.2),
                 inset 0 1px 0 rgba(255, 255, 255, 0.05);
             transform: translateY(-2px);
         }
@@ -526,12 +528,27 @@
             font-style: italic;
         }
 
+        /* Keep browser autofill consistent with dark theme inputs */
+        .config-item input:-webkit-autofill,
+        .config-item input:-webkit-autofill:hover,
+        .config-item input:-webkit-autofill:focus,
+        .form-group input:-webkit-autofill,
+        .form-group input:-webkit-autofill:hover,
+        .form-group input:-webkit-autofill:focus {
+            -webkit-text-fill-color: var(--text-primary);
+            caret-color: var(--text-primary);
+            -webkit-box-shadow: 0 0 0 1000px var(--bg-primary) inset;
+            box-shadow: 0 0 0 1000px var(--bg-primary) inset;
+            border: 1px solid rgba(48, 54, 61, 0.5);
+            transition: background-color 9999s ease-out 0s;
+        }
+
         .config-item input[type="checkbox"] {
             width: 22px;
             height: 22px;
             margin-right: 12px;
             cursor: pointer;
-            accent-color: var(--accent-blue);
+            accent-color: var(--accent-red);
             border-radius: 6px;
             transition: all 0.3s;
         }
@@ -556,8 +573,8 @@
         }
 
         .config-item select option:checked {
-            background: linear-gradient(135deg, rgba(88, 166, 255, 0.2), rgba(188, 140, 255, 0.2));
-            color: var(--accent-blue);
+            background: linear-gradient(135deg, rgba(218, 54, 51, 0.2), rgba(255, 255, 255, 0.14));
+            color: #ffffff;
             font-weight: 600;
         }
 
@@ -624,7 +641,7 @@
         }
 
         .array-item input:hover {
-            border-color: rgba(88, 166, 255, 0.3);
+            border-color: rgba(218, 54, 51, 0.4);
             background: linear-gradient(135deg, rgba(13, 17, 23, 0.9), rgba(22, 27, 34, 0.7));
             transform: translateY(-1px);
             box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
@@ -632,11 +649,11 @@
 
         .array-item input:focus {
             outline: none;
-            border-color: var(--accent-blue);
+            border-color: var(--accent-red);
             background: linear-gradient(135deg, rgba(13, 17, 23, 0.95), rgba(22, 27, 34, 0.8));
             box-shadow: 
-                0 0 0 4px rgba(88, 166, 255, 0.1),
-                0 8px 24px rgba(88, 166, 255, 0.15),
+                0 0 0 4px rgba(218, 54, 51, 0.12),
+                0 8px 24px rgba(218, 54, 51, 0.2),
                 inset 0 1px 0 rgba(255, 255, 255, 0.05);
             transform: translateY(-2px);
         }
@@ -678,27 +695,27 @@
         }
 
         .badge-blue {
-            background: rgba(88, 166, 255, 0.2);
-            color: var(--accent-blue);
-            border: 1px solid rgba(88, 166, 255, 0.3);
+            background: rgba(218, 54, 51, 0.22);
+            color: #ffffff;
+            border: 1px solid rgba(218, 54, 51, 0.4);
         }
 
         .badge-green {
-            background: rgba(35, 134, 54, 0.2);
-            color: #3fb950;
-            border: 1px solid rgba(35, 134, 54, 0.3);
+            background: rgba(255, 255, 255, 0.12);
+            color: #ffffff;
+            border: 1px solid rgba(255, 255, 255, 0.3);
         }
 
         .badge-orange {
-            background: rgba(210, 153, 34, 0.2);
-            color: var(--accent-orange);
-            border: 1px solid rgba(210, 153, 34, 0.3);
+            background: rgba(218, 54, 51, 0.16);
+            color: #fca5a5;
+            border: 1px solid rgba(218, 54, 51, 0.3);
         }
 
         .badge-purple {
-            background: rgba(188, 140, 255, 0.2);
-            color: var(--accent-purple);
-            border: 1px solid rgba(188, 140, 255, 0.3);
+            background: rgba(255, 255, 255, 0.08);
+            color: #f3f4f6;
+            border: 1px solid rgba(255, 255, 255, 0.18);
         }
 
         .tabs {
@@ -733,7 +750,7 @@
             transform: translateX(-50%);
             width: 0;
             height: 3px;
-            background: linear-gradient(90deg, var(--accent-blue), var(--accent-purple));
+            background: linear-gradient(90deg, var(--accent-red), #ffffff);
             border-radius: 2px;
             transition: width 0.3s;
         }
@@ -744,7 +761,7 @@
         }
 
         .tab.active {
-            color: var(--accent-blue);
+            color: #ffffff;
             background: var(--bg-tertiary);
             font-weight: 600;
         }
@@ -772,7 +789,7 @@
             width: 24px;
             height: 24px;
             border: 2px solid var(--border-color);
-            border-top-color: var(--accent-blue);
+            border-top-color: var(--accent-red);
             border-radius: 50%;
             animation: spin 0.8s linear infinite;
         }
@@ -786,7 +803,7 @@
             bottom: 28px;
             right: 28px;
             padding: 14px 24px;
-            background: linear-gradient(135deg, var(--bg-secondary), #1a1f27);
+            background: linear-gradient(135deg, var(--bg-secondary), #14171d);
             border: 2px solid var(--border-color);
             border-radius: 12px;
             box-shadow: 0 8px 24px rgba(0, 0, 0, 0.5);
@@ -804,8 +821,8 @@
         }
 
         .toast-success {
-            border-color: var(--accent-green);
-            color: #3fb950;
+            border-color: var(--accent-red);
+            color: #fca5a5;
         }
 
         .toast-error {
@@ -1272,7 +1289,7 @@
 
     <footer>
         <div class="container">
-            <p>Fusion Search Admin Console &copy; 2026 | <a href="/swagger/index.html" style="color: var(--accent-blue);">API Docs</a></p>
+            <p>Fusion Search Admin Console &copy; 2026 | <a href="/swagger/index.html" style="color: #ffffff;">API Docs</a></p>
         </div>
     </footer>
 

@@ -109,7 +109,7 @@ type AppConfig struct {
 
 func LoadConfig(configPath string) (*AppConfig, error) {
 	if configPath == "" {
-		if envPath := os.Getenv("ORIO_SEARCH_CONFIG"); envPath != "" {
+		if envPath := os.Getenv("FUSION_SEARCH_CONFIG"); envPath != "" {
 			configPath = envPath
 		} else {
 			configPath = "config.yaml"
