@@ -82,6 +82,16 @@ All endpoints are identical to the Python version:
 - `GET /health` - Health check
 - `GET /tool-schema` - OpenAI-compatible tool schema
 
+## Admin Console
+
+Fusion Search includes a built-in admin console for configuration management.
+
+- Admin page: `GET /admin`
+- Login API: `POST /admin/api/login`
+- Config APIs: `GET /admin/api/config`, `PUT /admin/api/config`
+
+![Fusion Search Admin Console](./admin-page.png)
+
 ## Features
 
 ✅ Configuration management with YAML
