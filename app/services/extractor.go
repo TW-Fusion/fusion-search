@@ -42,13 +42,18 @@ type ContentExtractor struct {
 }
 
 func NewContentExtractor(cfg *config.AppConfig, httpClient *http.Client) *ContentExtractor {
+	globalSemaphore := make(chan struct{}, cfg.Extraction.MaxConcurrent)
+	for i := 0; i < cfg.Extraction.MaxConcurrent; i++ {
+		globalSemaphore <- struct{}{}
+	}
+
 	return &ContentExtractor{
 		cfg:               cfg,
 		httpClient:        httpClient,
 		domainSemaphores:  make(map[string]chan struct{}),
 		domainConcurrency: cfg.Extraction.DomainConcurrency,
 		maxDomains:        cfg.Extraction.DomainSemaphoreMaxSize,
-		globalSemaphore:   make(chan struct{}, cfg.Extraction.MaxConcurrent),
+		globalSemaphore:   globalSemaphore,
 		logger:            logging.GetLogger(),
 	}
 }
@@ -81,6 +86,9 @@ func (ce *ContentExtractor) getDomainSemaphore(urlStr string) chan struct{} {
 	}
 
 	sem := make(chan struct{}, ce.domainConcurrency)
+	for i := 0; i < ce.domainConcurrency; i++ {
+		sem <- struct{}{}
+	}
 	ce.domainSemaphores[domain] = sem
 	return sem
 }

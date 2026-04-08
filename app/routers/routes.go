@@ -16,10 +16,11 @@ func Setup(
 	searchBackend services.SearchBackend,
 	contentExtractor *services.ContentExtractor,
 	llmService *services.LLMService,
+	rerankerService *services.RerankerService,
 	rateLimiter *middleware.RateLimiter,
 ) {
 	// API routes
-	SearchRouter(r, cfg, cacheService, searchBackend, contentExtractor, llmService, rateLimiter)
+	SearchRouter(r, cfg, cacheService, searchBackend, contentExtractor, llmService, rerankerService, rateLimiter)
 	ExtractRouter(r, cfg, cacheService, contentExtractor, rateLimiter)
 	SearchStreamRouter(r, cfg, searchBackend, contentExtractor, llmService, rateLimiter)
 

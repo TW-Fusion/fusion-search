@@ -53,9 +53,13 @@ type RateLimitConfig struct {
 }
 
 type RerankConfig struct {
-	Enabled bool   `yaml:"enabled" json:"enabled"`
-	Model   string `yaml:"model" json:"model"`
-	TopK    int    `yaml:"top_k" json:"top_k"`
+	Enabled        bool   `yaml:"enabled" json:"enabled"`
+	Model          string `yaml:"model" json:"model"`
+	TopK           int    `yaml:"top_k" json:"top_k"`
+	OnnxModelPath  string `yaml:"onnx_model_path" json:"onnx_model_path"`
+	TokenizerPath  string `yaml:"tokenizer_path" json:"tokenizer_path"`
+	ORTLibraryPath string `yaml:"ort_library_path" json:"ort_library_path"`
+	MaxLength      int    `yaml:"max_length" json:"max_length"`
 }
 
 type ResilienceConfig struct {
@@ -213,6 +217,9 @@ func LoadConfig(configPath string) (*AppConfig, error) {
 	if cfg.LLM.SystemPrompt == "" {
 		cfg.LLM.SystemPrompt = "You are a helpful search assistant. Answer the user's question concisely based on the provided search results. Cite sources by number [1], [2], etc."
 	}
+	if cfg.Rerank.MaxLength == 0 {
+		cfg.Rerank.MaxLength = 512
+	}
 
 	return &cfg, nil
 }
@@ -251,9 +258,13 @@ func DefaultConfig() *AppConfig {
 			ExtractRate: "30/minute",
 		},
 		Rerank: RerankConfig{
-			Enabled: false,
-			Model:   "ms-marco-MiniLM-L-12-v2",
-			TopK:    5,
+			Enabled:        false,
+			Model:          "ms-marco-MiniLM-L-12-v2",
+			TopK:           5,
+			OnnxModelPath:  "",
+			TokenizerPath:  "",
+			ORTLibraryPath: "",
+			MaxLength:      512,
 		},
 		Resilience: ResilienceConfig{
 			CircuitBreakerFailureThreshold: 5,

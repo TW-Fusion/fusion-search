@@ -24,11 +24,12 @@ func SearchRouter(
 	searchBackend services.SearchBackend,
 	extractor *services.ContentExtractor,
 	llmService *services.LLMService,
+	reranker *services.RerankerService,
 	rateLimiter *middleware.RateLimiter,
 ) {
 	router := r.Group("/search")
 	router.Use(rateLimiter.Limit(cfg.RateLimit.SearchRate))
-	router.POST("", SearchHandler(cfg, cache, searchBackend, extractor, llmService))
+	router.POST("", SearchHandler(cfg, cache, searchBackend, extractor, llmService, reranker))
 }
 
 // SearchHandler godoc
@@ -48,6 +49,7 @@ func SearchHandler(
 	searchBackend services.SearchBackend,
 	extractor *services.ContentExtractor,
 	llmService *services.LLMService,
+	reranker *services.RerankerService,
 ) gin.HandlerFunc {
 	logger := logging.GetLogger()
 
@@ -131,6 +133,39 @@ func SearchHandler(
 			}
 		}
 
+		// Rerank results
+		if reranker != nil && cfg.Rerank.Enabled && len(results) > 0 {
+			resultMaps := make([]map[string]interface{}, len(results))
+			for i, result := range results {
+				resultMaps[i] = map[string]interface{}{
+					"title":   result.Title,
+					"url":     result.URL,
+					"content": result.Content,
+					"score":   result.Score,
+				}
+			}
+
+			reranked := reranker.Rerank(req.Query, resultMaps, req.MaxResults)
+			newResults := make([]models.SearchResult, 0, len(reranked))
+			for _, item := range reranked {
+				sr := models.SearchResult{}
+				if title, ok := item["title"].(string); ok {
+					sr.Title = title
+				}
+				if url, ok := item["url"].(string); ok {
+					sr.URL = url
+				}
+				if content, ok := item["content"].(string); ok {
+					sr.Content = content
+				}
+				if score, ok := item["score"].(float64); ok {
+					sr.Score = score
+				}
+				newResults = append(newResults, sr)
+			}
+			results = newResults
+		}
+
 		// Advanced depth: fetch and extract content
 		if req.SearchDepth == models.SearchDepthAdvanced || req.IncludeRawContent {
 			urls := make([]string, len(results))
@@ -198,7 +233,18 @@ func SearchHandler(
 }
 
 func hashParams(req models.SearchRequest) string {
-	data, _ := json.Marshal(req)
+	dataMap := map[string]interface{}{
+		"search_depth":        req.SearchDepth,
+		"topic":               req.Topic,
+		"max_results":         req.MaxResults,
+		"include_answer":      req.IncludeAnswer,
+		"include_raw_content": req.IncludeRawContent,
+		"include_images":      req.IncludeImages,
+		"include_domains":     req.IncludeDomains,
+		"exclude_domains":     req.ExcludeDomains,
+		"time_range":          req.TimeRange,
+	}
+	data, _ := json.Marshal(dataMap)
 	h := sha256.Sum256(data)
 	return fmt.Sprintf("%x", h[:6])
 }

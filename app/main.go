@@ -69,6 +69,7 @@ func main() {
 	searchBackend := services.CreateSearchBackend(cfg, searchHTTPClient)
 
 	contentExtractor := services.NewContentExtractor(cfg, extractHTTPClient)
+	rerankerService := services.NewRerankerService(cfg)
 
 	llmService := services.NewLLMService(cfg)
 	llmService.Initialize()
@@ -98,7 +99,7 @@ func main() {
 	r.Use(middleware.AuthMiddleware(cfg))
 
 	// Setup routes
-	routers.Setup(r, cfg, cacheService, searchBackend, contentExtractor, llmService, rateLimiter)
+	routers.Setup(r, cfg, cacheService, searchBackend, contentExtractor, llmService, rerankerService, rateLimiter)
 
 	// Swagger UI (development only)
 	setupSwagger(r)

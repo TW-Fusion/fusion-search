@@ -112,7 +112,7 @@ func (rl *RateLimiter) Limit(rateStr string) gin.HandlerFunc {
 		}
 
 		// Create Redis key
-		key := fmt.Sprintf("rate_limit:%s:%d", clientKey, window.Seconds())
+		key := fmt.Sprintf("rate_limit:%s:%.0f", clientKey, window.Seconds())
 
 		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 		defer cancel()
